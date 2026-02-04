@@ -1,0 +1,30 @@
+{
+    "name": "inspiro-agent",
+    "version": "1.0.0",
+    "description": "Autonomous AI agent that listens to Farcaster and deploys paid-mint NFT collections on Base",
+    "main": "src/index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node src/index.js",
+        "dev": "node --watch src/index.js",
+        "test": "node scripts/test.js",
+        "deploy-factory": "node scripts/test.js --deploy-factory"
+    },
+    "keywords": [
+        "nft",
+        "base",
+        "farcaster",
+        "agent",
+        "web3",
+        "ai"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "@pinata/sdk": "^2.1.0",
+        "axios": "^1.6.7",
+        "dotenv": "^16.4.5",
+        "ethers": "^6.11.0"
+    }
+}
