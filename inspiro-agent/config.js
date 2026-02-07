@@ -11,8 +11,8 @@ export const config = {
   neynarApiKey: process.env.NEYNAR_API_KEY,
   signerUuid: process.env.SIGNER_UUID,
   
-  // AI
-  openaiApiKey: process.env.OPENAI_API_KEY,
+  // AI (Gemini)
+  geminiApiKey: process.env.GEMINI_API_KEY,
   
   // IPFS
   pinataApiKey: process.env.PINATA_API_KEY,

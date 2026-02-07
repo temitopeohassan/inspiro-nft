@@ -163,7 +163,7 @@ class InspiroAgent {
       'privateKey',
       'neynarApiKey',
       'signerUuid',
-      'openaiApiKey',
+      'geminiApiKey',
       'pinataApiKey',
       'pinataSecretKey',
       'factoryContractAddress',
