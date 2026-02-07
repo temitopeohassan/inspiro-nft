@@ -27,7 +27,17 @@ export async function getUserByFid(fid: number): Promise<FarcasterUser | null> {
   try {
     const client = getNeynarClient();
     const response = await client.fetchBulkUsers([fid]);
-    return response.users[0] || null;
+    const user = response.users[0];
+    if (!user) return null;
+    return {
+      fid: user.fid,
+      username: user.username,
+      displayName: user.display_name ?? user.username,
+      pfpUrl: user.pfp_url ?? "",
+      verifiedAddresses: {
+        ethAddresses: user.verified_addresses?.eth_addresses ?? [],
+      },
+    };
   } catch (error) {
     console.error("Error fetching Farcaster user:", error);
     return null;
