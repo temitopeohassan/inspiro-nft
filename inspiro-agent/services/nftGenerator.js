@@ -1,10 +1,13 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from '../config.js';
 
 export class NFTGenerator {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: config.openaiApiKey
+    // Initialize Gemini
+    const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+    // Use the 2.0 Flash-lite model for fast, creative text generation
+    this.model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash-lite-preview-02-05" 
     });
   }
 
@@ -12,7 +15,7 @@ export class NFTGenerator {
    * Generate complete NFT metadata
    */
   async generateMetadata(params) {
-    const { collection_name, description, max_supply } = params;
+    const { collection_name, description } = params;
 
     // Generate enhanced description if needed
     let finalDescription = description;
@@ -37,27 +40,17 @@ export class NFTGenerator {
   }
 
   /**
-   * Generate collection description using AI
+   * Generate collection description using Gemini
    */
   async generateDescription(collectionName) {
     try {
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a creative NFT collection description writer. Write engaging, concise descriptions under 280 characters.'
-          },
-          {
-            role: 'user',
-            content: `Write a compelling description for an NFT collection named "${collectionName}". Make it unique and interesting.`
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.8
-      });
+      const prompt = `You are a creative NFT collection description writer. 
+      Write an engaging, concise description under 280 characters for an NFT collection named "${collectionName}". 
+      Make it unique and interesting. Respond with ONLY the description text.`;
 
-      return completion.choices[0].message.content.substring(0, 280);
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      return response.text().trim().substring(0, 280);
     } catch (error) {
       console.error('Error generating description:', error.message);
       return `${collectionName} - A unique digital collectible on Base`;
@@ -70,7 +63,6 @@ export class NFTGenerator {
   generateSymbol(name) {
     if (!name) return 'INSP';
     
-    // Take first letters of each word, max 5 characters
     const words = name.split(' ').filter(w => w.length > 0);
     let symbol = words.map(w => w[0].toUpperCase()).join('');
     
@@ -86,51 +78,26 @@ export class NFTGenerator {
    */
   async generateAttributes(name, description) {
     const attributes = [
-      {
-        trait_type: 'Collection',
-        value: name || 'Inspiro'
-      },
-      {
-        trait_type: 'Network',
-        value: 'Base'
-      },
-      {
-        trait_type: 'Deployed By',
-        value: 'Inspiro Agent'
-      }
+      { trait_type: 'Collection', value: name || 'Inspiro' },
+      { trait_type: 'Network', value: 'Base' },
+      { trait_type: 'Deployed By', value: 'Inspiro Agent' },
+      { trait_type: 'Creation Date', value: new Date().toISOString().split('T')[0] }
     ];
 
-    // Add timestamp
-    attributes.push({
-      trait_type: 'Creation Date',
-      value: new Date().toISOString().split('T')[0]
-    });
-
-    return attributes.slice(0, 8); // Max 8 attributes
+    return attributes.slice(0, 8);
   }
 
   /**
-   * Generate artwork using DALL-E (optional, can be replaced with templates)
+   * Note: Gemini 2.0 Flash-lite handles text/vision. 
+   * For Image Generation (DALL-E equivalent), Google uses "Imagen".
+   * This is currently a separate workflow or requires the Vertex AI SDK.
+   * For now, we will log that it's using the default fallback.
    */
   async generateArtwork(collectionName, description) {
-    try {
-      const prompt = `Create a modern, abstract NFT artwork for a collection called "${collectionName}". ${description || ''}. Style: vibrant, digital art, geometric, suitable for NFT. No text in image.`;
-
-      const response = await this.openai.images.generate({
-        model: 'dall-e-3',
-        prompt: prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-        response_format: 'url'
-      });
-
-      return response.data[0].url;
-    } catch (error) {
-      console.error('Error generating artwork:', error.message);
-      // Return null to use default template
-      return null;
-    }
+    console.log('Using default SVG artwork for:', collectionName);
+    // If you plan to use a 3rd party API for images (like Midjourney/Stability), 
+    // you would call it here.
+    return null; 
   }
 
   /**
@@ -146,18 +113,18 @@ export class NFTGenerator {
     const color2 = colors[Math.floor(Math.random() * colors.length)];
 
     const svg = `<svg width="1000" height="1000" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${color1};stop-opacity:1" />
-      <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="1000" height="1000" fill="url(#grad)"/>
-  <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="120" font-weight="bold" 
-        fill="white" text-anchor="middle" dominant-baseline="middle">${symbol}</text>
-  <text x="50%" y="65%" font-family="Arial, sans-serif" font-size="32" 
-        fill="white" text-anchor="middle" dominant-baseline="middle" opacity="0.8">${collectionName}</text>
-</svg>`;
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${color1};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="1000" height="1000" fill="url(#grad)"/>
+      <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="120" font-weight="bold" 
+            fill="white" text-anchor="middle" dominant-baseline="middle">${symbol}</text>
+      <text x="50%" y="65%" font-family="Arial, sans-serif" font-size="32" 
+            fill="white" text-anchor="middle" dominant-baseline="middle" opacity="0.8">${collectionName}</text>
+    </svg>`;
 
     return svg;
   }
