@@ -1,4 +1,4 @@
-import pinataSDK from 'pinata-sdk';
+import pinataSDK from '@pinata/sdk';
 import axios from 'axios';
 import { config } from '../config.js';
 
