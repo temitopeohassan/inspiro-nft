@@ -54,6 +54,31 @@ class InspiroAgent {
   }
 
   /**
+   * Run one poll cycle (for serverless / cron)
+   */
+  async runOnePollCycle() {
+    try {
+      const casts = await this.farcasterListener.pollForMentions();
+      if (casts.length > 0) {
+        console.log(`📬 Found ${casts.length} new cast(s)`);
+        for (const cast of casts) {
+          if (this.processedCasts.has(cast.castId)) continue;
+          this.processedCasts.add(cast.castId);
+          if (this.processedCasts.size > 1000) {
+            const first = this.processedCasts.values().next().value;
+            this.processedCasts.delete(first);
+          }
+          if (!this.farcasterListener.containsTriggers(cast.castText)) continue;
+          await this.processCast(cast);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in poll cycle:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Main polling loop
    */
   async pollLoop() {
@@ -216,11 +241,28 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-// Start the agent
+// Start the agent (long-running when executed directly)
 const agent = new InspiroAgent();
 global.agent = agent;
 
-agent.start().catch(error => {
-  console.error('Fatal error starting agent:', error);
-  process.exit(1);
-});
+// Vercel serverless: export handler that runs one poll cycle
+export default async function handler(req, res) {
+  if (!agent.validateConfig()) {
+    return res.status(500).json({ error: 'Configuration validation failed' });
+  }
+  try {
+    await agent.runOnePollCycle();
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('Handler error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+// Only start long-running loop when NOT in Vercel (run with: node index.js)
+if (!process.env.VERCEL) {
+  agent.start().catch(error => {
+    console.error('Fatal error starting agent:', error);
+    process.exit(1);
+  });
+}
